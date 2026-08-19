@@ -1,7 +1,7 @@
 [application]
 config/name="BlockStrike"
 run/main_scene="res://main.tscn"
-config/features=PackedStringArray("4.3", "GL Compatibility")
+config/features=PackedStringArray("4.7", "GL Compatibility")
 
 [display]
 window/size/viewport_width=1280
@@ -13,6 +13,7 @@ window/stretch/mode="canvas_items"
 [rendering]
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
+textures/vram_compression/import_etc2_astc=true
 
 [autoload]
 Settings="*res://scripts/settings.gd"
