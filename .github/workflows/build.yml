@@ -1,0 +1,25 @@
+name: Build BlockStrike
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: barichello/godot-ci:4.7.1
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare build directory
+        run: mkdir -p build
+      - name: Build Windows
+        run: godot --headless --path . --export-release "Windows Desktop" build/BlockStrike.exe
+      - name: Build Android
+        run: godot --headless --path . --export-release "Android" build/BlockStrike.apk
+      - name: Upload builds
+        uses: actions/upload-artifact@v4
+        with:
+          name: BlockStrike-builds
+          path: build/
