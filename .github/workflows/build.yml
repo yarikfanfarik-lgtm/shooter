@@ -7,17 +7,47 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     container:
       image: barichello/godot-ci:4.7.1
+    env:
+      GODOT_VERSION: 4.7.1
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Prepare Godot export templates
+        shell: bash
+        run: |
+          set -eux
+          mkdir -p "$HOME/.config"
+          mkdir -p "$HOME/.local/share/godot/export_templates"
+          if [ -d /root/.config/godot ]; then
+            cp -a /root/.config/godot/. "$HOME/.config/godot/"
+          fi
+          if [ -d "/root/.local/share/godot/export_templates/${GODOT_VERSION}.stable" ]; then
+            cp -a "/root/.local/share/godot/export_templates/${GODOT_VERSION}.stable" \
+              "$HOME/.local/share/godot/export_templates/"
+          else
+            echo "Godot export templates not found in the CI image"
+            find /root/.local/share/godot/export_templates -maxdepth 2 -type f -print || true
+            exit 1
+          fi
+
       - name: Prepare build directory
         run: mkdir -p build
+
+      - name: Validate project
+        run: godot --headless --path . --editor --quit --verbose
+
       - name: Build Windows
-        run: godot --headless --path . --export-release "Windows Desktop" build/BlockStrike.exe
+        run: godot --headless --path . --verbose --export-release "Windows Desktop" build/BlockStrike.exe
+
       - name: Build Android
-        run: godot --headless --path . --export-release "Android" build/BlockStrike.apk
+        run: godot --headless --path . --verbose --export-release "Android" build/BlockStrike.apk
+
       - name: Upload builds
         uses: actions/upload-artifact@v4
         with:
