@@ -4,66 +4,66 @@ on:
   workflow_dispatch:
   push:
     branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
 
 jobs:
   build:
     runs-on: ubuntu-24.04
-    container:
-      image: barichello/godot-ci:4.7.1
-    env:
-      GODOT_VERSION: 4.7.1
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           lfs: true
 
-      - name: Prepare Godot configuration and export templates
-        shell: bash
+      - name: Setup Godot
+        uses: solarlabyrinth/action-setup-godot@v3
+        with:
+          version: 4.7-stable
+          export-templates: true
+          cache: true
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android build tools
         run: |
-          set -eux
-          mkdir -p "$HOME/.config/godot"
-          mkdir -p "$HOME/.local/share/godot/export_templates"
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
-          if [ -d /root/.config/godot ]; then
-            cp -a /root/.config/godot/. "$HOME/.config/godot/"
-          fi
-
-          SRC=""
-          if [ -d "/root/.local/share/godot/export_templates/${GODOT_VERSION}.stable" ]; then
-            SRC="/root/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
-          elif [ -d "/root/.local/share/godot/templates/${GODOT_VERSION}.stable" ]; then
-            SRC="/root/.local/share/godot/templates/${GODOT_VERSION}.stable"
-          fi
-
-          if [ -z "$SRC" ]; then
-            echo "Godot export templates not found in the CI image"
-            echo "Searching common locations..."
-            find /root/.local/share/godot -maxdepth 4 -type f -name 'windows_*x86_64*.exe' -print || true
-            find /root/.local/share/godot -maxdepth 3 -type d -print || true
-            exit 1
-          fi
-
-          rm -rf "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
-          cp -a "$SRC" "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
-
-          test -f "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable/windows_release_x86_64.exe"
-          test -f "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable/windows_debug_x86_64.exe"
+      - name: Verify toolchain
+        run: |
+          godot --version
+          java -version
+          adb version
 
       - name: Prepare build directory
-        run: mkdir -p build
+        run: mkdir -p build/windows build/android
 
       - name: Validate project
         run: godot --headless --path . --editor --quit --verbose
 
       - name: Build Windows
-        run: godot --headless --path . --verbose --export-release "Windows Desktop" build/BlockStrike.exe
+        run: godot --headless --path . --verbose --export-release "Windows Desktop" build/windows/BlockStrike.exe
 
       - name: Build Android
-        run: godot --headless --path . --verbose --export-release "Android" build/BlockStrike.apk
+        run: godot --headless --path . --verbose --export-release "Android" build/android/BlockStrike.apk
 
-      - name: Upload builds
+      - name: Upload Windows build
         uses: actions/upload-artifact@v4
         with:
-          name: BlockStrike-builds
-          path: build/
+          name: BlockStrike-Windows
+          path: build/windows/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload Android build
+        uses: actions/upload-artifact@v4
+        with:
+          name: BlockStrike-Android
+          path: build/android/
+          if-no-files-found: error
+          retention-days: 14
