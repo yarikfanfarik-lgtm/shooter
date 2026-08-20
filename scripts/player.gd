@@ -44,7 +44,7 @@ func _ready() -> void:
     _make_body()
     if is_local:
         camera = Camera3D.new()
-        camera.position = Vector3(0, 1.68, -0.38)
+        camera.position = Vector3(0, 1.68, -0.62)
         camera.current = true
         camera.fov = 75.0
         add_child(camera)
@@ -104,6 +104,7 @@ func _make_body() -> void:
     _box(visual, Vector3(0.30, 0.40, 0.34), Vector3(0.62, 1.10, 0), CLOTH, "RightForearm")
     _box(visual, Vector3(0.28, 0.18, 0.30), Vector3(-0.58, 0.84, -0.02), DARK, "LeftGlove")
     _box(visual, Vector3(0.28, 0.18, 0.30), Vector3(0.58, 0.84, -0.02), DARK, "RightGlove")
+
     var body := CollisionShape3D.new()
     var capsule := CapsuleShape3D.new()
     capsule.height = 2.0
@@ -111,12 +112,18 @@ func _make_body() -> void:
     body.shape = capsule
     body.position.y = 1.05
     add_child(body)
+
     var rifle := Node3D.new()
     rifle.name = "Rifle"
     rifle.position = Vector3(0.42, 1.42, -0.42)
     rifle.rotation_degrees = Vector3(-8, 0, -8)
     visual.add_child(rifle)
     _make_weapon(rifle, false)
+
+    # Never render the full third-person body through the local camera.
+    # The local player gets exactly one dedicated pair of first-person arms below.
+    if is_local:
+        visual.visible = false
 
 func _make_weapon(parent: Node3D, first_person: bool) -> void:
     var sniper := weapon_mode == 1
@@ -134,16 +141,34 @@ func _make_weapon(parent: Node3D, first_person: bool) -> void:
         parent.position = Vector3(0.38, -0.28, -0.78)
         parent.rotation_degrees = Vector3(-2, -3, -2)
 
+func _make_view_arms(parent: Node3D) -> void:
+    # One controlled pair of chunky low-poly arms. They are children of the weapon,
+    # so aiming/reloading moves the arms together with it.
+    var left_sleeve := _box(parent, Vector3(0.24, 0.28, 0.48), Vector3(-0.24, -0.04, 0.24), CLOTH, "FP_LeftSleeve")
+    left_sleeve.rotation_degrees = Vector3(12, 0, 24)
+    var right_sleeve := _box(parent, Vector3(0.24, 0.28, 0.48), Vector3(0.25, -0.02, 0.28), CLOTH, "FP_RightSleeve")
+    right_sleeve.rotation_degrees = Vector3(12, 0, -24)
+
+    var left_hand := _box(parent, Vector3(0.24, 0.18, 0.28), Vector3(-0.10, -0.03, -0.05), SKIN, "FP_LeftHand")
+    left_hand.rotation_degrees = Vector3(0, 0, 18)
+    var right_hand := _box(parent, Vector3(0.24, 0.18, 0.28), Vector3(0.12, -0.04, -0.10), SKIN, "FP_RightHand")
+    right_hand.rotation_degrees = Vector3(0, 0, -18)
+
+    _box(parent, Vector3(0.28, 0.14, 0.30), Vector3(-0.10, -0.08, 0.10), DARK, "FP_LeftGlove")
+    _box(parent, Vector3(0.28, 0.14, 0.30), Vector3(0.12, -0.08, 0.06), DARK, "FP_RightGlove")
+
 func _make_view_rifle() -> void:
     view_rifle = Node3D.new()
     view_rifle.name = "FirstPersonWeapon"
     camera.add_child(view_rifle)
     _make_weapon(view_rifle, true)
+    _make_view_arms(view_rifle)
 
 func _refresh_weapon() -> void:
     for child in view_rifle.get_children():
         child.queue_free()
     _make_weapon(view_rifle, true)
+    _make_view_arms(view_rifle)
 
 func _unhandled_input(event: InputEvent) -> void:
     if not is_local:
