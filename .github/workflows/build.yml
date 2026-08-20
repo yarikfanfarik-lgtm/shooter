@@ -42,12 +42,6 @@ jobs:
           adb version
           sdkmanager --list_installed | grep -E 'platform-tools|platforms;android-35|build-tools;33.0.2|build-tools;35.0.0' || true
 
-      - name: Install Godot Android Gradle build template
-        run: |
-          godot --headless --path . --install-android-build-template
-          test -f android/build.gradle || test -d android/build
-          echo "Android Gradle template installed."
-
       - name: Prepare build directory
         run: mkdir -p build/windows build/android
 
