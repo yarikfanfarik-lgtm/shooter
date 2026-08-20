@@ -3,7 +3,7 @@ extends CharacterBody3D
 var world: Node
 var player_id := 100
 var health := 100
-a var target: Node3D
+var target: Node3D
 var think := 0.0
 var shoot_timer := 0.0
 
