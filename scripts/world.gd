@@ -5,8 +5,8 @@ var players: Dictionary = {}
 var spawn_points := [
     Vector3(-18, 1.2, -18), Vector3(18, 1.2, 18),
     Vector3(18, 1.2, -18), Vector3(-18, 1.2, 18),
-    Vector3(0, 1.2, -22), Vector3(0, 1.2, 22),
-    Vector3(-22, 1.2, 0), Vector3(22, 1.2, 0)
+    Vector3(0, 1.2, -20), Vector3(0, 1.2, 20),
+    Vector3(-20, 1.2, 0), Vector3(20, 1.2, 0)
 ]
 var score := 0
 
@@ -46,46 +46,56 @@ func _build_world() -> void:
     sun.shadow_enabled = true
     add_child(sun)
 
-    # Main sandy arena and a lighter central courtyard.
-    _block(Vector3(0, -0.5, 0), Vector3(72, 1, 72), SAND)
-    _block(Vector3(0, 0.03, 0), Vector3(34, 0.12, 30), SAND_LIGHT)
+    # Compact FPS map: much less empty space, clear lanes, alleys and places to hide.
+    _block(Vector3(0, -0.5, 0), Vector3(52, 1, 52), SAND)
+    _block(Vector3(0, 0.03, 0), Vector3(30, 0.12, 28), SAND_LIGHT)
 
-    # Perimeter buildings create the compact FPS sight lines shown in the reference.
-    _building(Vector3(-25, 4, -24), Vector3(16, 8, 14))
-    _building(Vector3(25, 4, -24), Vector3(16, 8, 14))
-    _building(Vector3(-25, 4, 24), Vector3(16, 8, 14))
-    _building(Vector3(25, 4, 24), Vector3(16, 8, 14))
+    # Outer boundary. The map is intentionally closed so fights happen inside the playable area.
+    _block(Vector3(0, 2.0, -26), Vector3(52, 4, 1), WALL)
+    _block(Vector3(0, 2.0, 26), Vector3(52, 4, 1), WALL)
+    _block(Vector3(-26, 2.0, 0), Vector3(1, 4, 52), WALL)
+    _block(Vector3(26, 2.0, 0), Vector3(1, 4, 52), WALL)
 
-    # Central lanes and cover.
-    _crate_stack(Vector3(-8, 1.1, -4), 2)
-    _crate_stack(Vector3(8, 1.1, 5), 2)
-    _crate_stack(Vector3(0, 1.1, 10), 1)
-    _crate_stack(Vector3(0, 1.1, -11), 1)
-    _crate_stack(Vector3(-13, 1.1, 9), 1)
-    _crate_stack(Vector3(13, 1.1, -9), 1)
+    # Only two large buildings. They form opposite corners instead of filling the whole map.
+    _building(Vector3(-19, 3.5, -18), Vector3(11, 7, 10))
+    _building(Vector3(19, 3.5, 18), Vector3(11, 7, 10))
 
-    # Low walls divide the courtyard without blocking every sight line.
-    _wall_with_gap(Vector3(-15, 1.4, 0), Vector3(2, 2.8, 18), 0.45)
-    _wall_with_gap(Vector3(15, 1.4, 0), Vector3(2, 2.8, 18), 0.45)
-    _block(Vector3(0, 1.3, 0), Vector3(12, 2.6, 1.5), WALL)
+    # Narrow side corridors / alleys.
+    _block(Vector3(-12.5, 1.6, -8), Vector3(1.5, 3.2, 13), WALL)
+    _block(Vector3(-8, 1.6, -12.5), Vector3(9, 3.2, 1.5), WALL)
+    _block(Vector3(12.5, 1.6, 8), Vector3(1.5, 3.2, 13), WALL)
+    _block(Vector3(8, 1.6, 12.5), Vector3(9, 3.2, 1.5), WALL)
 
-    # Rooftop access stairs and raised positions.
-    _stairs(Vector3(-18, 0.5, -15), 8, 1.0)
-    _stairs(Vector3(18, 0.5, 15), 8, 1.0)
-    _block(Vector3(-25, 8.5, -24), Vector3(15, 1, 13), WALL_LIGHT)
-    _block(Vector3(25, 8.5, 24), Vector3(15, 1, 13), WALL_LIGHT)
+    # Central combat lane with two offset walls. Their stagger creates corners to peek from.
+    _block(Vector3(-5.5, 1.4, 0), Vector3(2.2, 2.8, 10), WALL)
+    _block(Vector3(5.5, 1.4, 0), Vector3(2.2, 2.8, 10), WALL)
+    _block(Vector3(0, 1.4, -7.5), Vector3(7, 2.8, 1.6), WALL)
+    _block(Vector3(0, 1.4, 7.5), Vector3(7, 2.8, 1.6), WALL)
 
-    # Decorative door/window openings and awnings.
-    _facade_details(Vector3(-25, 4, -24))
-    _facade_details(Vector3(25, 4, -24))
-    _facade_details(Vector3(-25, 4, 24))
-    _facade_details(Vector3(25, 4, 24))
+    # Short cover pieces make the arena playable instead of one giant open square.
+    _block(Vector3(-2.5, 0.9, -3.2), Vector3(3.2, 1.8, 1.2), WALL_LIGHT)
+    _block(Vector3(2.5, 0.9, 3.2), Vector3(3.2, 1.8, 1.2), WALL_LIGHT)
+    _block(Vector3(-9, 0.8, 5.5), Vector3(4.0, 1.6, 1.2), WALL_LIGHT)
+    _block(Vector3(9, 0.8, -5.5), Vector3(4.0, 1.6, 1.2), WALL_LIGHT)
 
-    # Blocky palms to match the stylized low-poly look.
-    for p in [Vector3(-30, 0, -8), Vector3(30, 0, 8), Vector3(-30, 0, 12), Vector3(30, 0, -12)]:
+    # Crates are concentrated in a few tactical pockets, not scattered everywhere.
+    _crate_stack(Vector3(-7.5, 1.0, -4.0), 2)
+    _crate_stack(Vector3(7.5, 1.0, 4.0), 2)
+    _crate_stack(Vector3(-15.5, 1.0, 8.5), 2)
+    _crate_stack(Vector3(15.5, 1.0, -8.5), 2)
+
+    # Small rooftop routes and raised cover near the two buildings.
+    _stairs(Vector3(-13.5, 0.5, -17), 7, 1.0)
+    _stairs(Vector3(13.5, 0.5, 17), 7, -1.0)
+
+    _facade_details(Vector3(-19, 3.5, -18))
+    _facade_details(Vector3(19, 3.5, 18))
+
+    # A few palms for the reference-map atmosphere, leaving the lanes unobstructed.
+    for p in [Vector3(-23, 0, 8), Vector3(23, 0, -8), Vector3(-8, 0, 22), Vector3(8, 0, -22)]:
         _palm(p)
 
-    # Small stone paving strips.
+    # Simple paving paths emphasize the intended routes through the map.
     for x in [-9, -6, -3, 0, 3, 6, 9]:
         _block(Vector3(x, 0.10, 0), Vector3(2.2, 0.12, 1.4), WALL_LIGHT)
     for z in [-9, -6, -3, 3, 6, 9]:
@@ -116,19 +126,16 @@ func _building(pos: Vector3, size: Vector3) -> void:
     _block(pos, size, WALL)
     _block(pos + Vector3(0, size.y * 0.5 + 0.25, 0), Vector3(size.x + 0.7, 0.5, size.z + 0.7), TRIM)
     _block(pos + Vector3(0, size.y + 0.65, 0), Vector3(size.x + 1.0, 0.35, size.z + 1.0), WALL_LIGHT)
-
-    # Corner parapets and rooftop cover.
     for sx in [-1, 1]:
         for sz in [-1, 1]:
             _block(pos + Vector3(sx * (size.x * 0.42), size.y + 1.0, sz * (size.z * 0.42)), Vector3(1.4, 1.6, 1.4), WALL)
 
 func _facade_details(pos: Vector3) -> void:
-    # Front-side door and windows are placed as dark recess-like blocks.
     var front_z := -1.0 if pos.z < 0 else 1.0
-    _block(pos + Vector3(0, 2.0, front_z * 7.08), Vector3(2.6, 4.0, 0.18), DARK)
-    for x in [-4.5, 4.5]:
-        _block(pos + Vector3(x, 4.5, front_z * 7.10), Vector3(2.2, 1.7, 0.16), BLUE)
-        _block(pos + Vector3(x, 5.5, front_z * 7.25), Vector3(2.7, 0.18, 0.55), TRIM)
+    _block(pos + Vector3(0, 2.0, front_z * 5.08), Vector3(2.6, 4.0, 0.18), DARK)
+    for x in [-3.2, 3.2]:
+        _block(pos + Vector3(x, 4.0, front_z * 5.10), Vector3(2.2, 1.7, 0.16), BLUE)
+        _block(pos + Vector3(x, 5.0, front_z * 5.25), Vector3(2.7, 0.18, 0.55), TRIM)
 
 func _crate_stack(pos: Vector3, count: int) -> void:
     for i in range(count):
@@ -138,16 +145,6 @@ func _crate_stack(pos: Vector3, count: int) -> void:
         _block(c + Vector3(0, 0, -1.08), Vector3(1.5, 0.12, 0.08), WOOD_LIGHT)
         _block(c + Vector3(0, 0, 1.08), Vector3(1.5, 0.12, 0.08), WOOD_LIGHT)
 
-func _wall_with_gap(pos: Vector3, size: Vector3, gap_ratio: float) -> void:
-    var gap_axis := size.z if size.z > size.x else size.x
-    var segment := gap_axis * (1.0 - gap_ratio) * 0.5
-    if size.z > size.x:
-        _block(pos + Vector3(0, 0, -(gap_axis - segment) * 0.5), Vector3(size.x, size.y, segment), WALL)
-        _block(pos + Vector3(0, 0, (gap_axis - segment) * 0.5), Vector3(size.x, size.y, segment), WALL)
-    else:
-        _block(pos + Vector3(-(gap_axis - segment) * 0.5, 0, 0), Vector3(segment, size.y, size.z), WALL)
-        _block(pos + Vector3((gap_axis - segment) * 0.5, 0, 0), Vector3(segment, size.y, size.z), WALL)
-
 func _stairs(start: Vector3, steps: int, direction: float) -> void:
     for i in range(steps):
         var h := 0.28 + i * 0.34
@@ -156,7 +153,6 @@ func _stairs(start: Vector3, steps: int, direction: float) -> void:
     _block(Vector3(start.x, 3.0, start.z + steps * 0.62 * direction), Vector3(5.0, 0.5, 4.0), WALL_LIGHT)
 
 func _palm(pos: Vector3) -> void:
-    # Deliberately made from boxes: chunky, readable, low-poly/block style.
     for i in range(5):
         _block(pos + Vector3(0, i * 1.25 + 0.7, 0), Vector3(0.55, 1.35, 0.55), TRIM)
     var top := pos + Vector3(0, 6.4, 0)
