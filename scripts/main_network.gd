@@ -12,7 +12,7 @@ func _ready() -> void:
     for child in menu.get_children():
         if child is Button and child.text == "JOIN BY CODE / IP":
             child.text = "JOIN ROOM"
-    status_label.text = "Master server: offline"
+    status_label.text = "Room service: offline"
 
 func _process(_delta: float) -> void:
     if not master_ws:
@@ -26,7 +26,7 @@ func _process(_delta: float) -> void:
     elif master_ws.get_ready_state() == WebSocketPeer.STATE_CLOSED:
         master_ws = null
         if mode == "lobby" and lobby_status_label:
-            lobby_status_label.text = "Room server disconnected"
+            lobby_status_label.text = "Room service disconnected"
 
 func _master_connect(action: String) -> void:
     master_action = action
@@ -34,14 +34,16 @@ func _master_connect(action: String) -> void:
     var err := master_ws.connect_to_url(MASTER_SERVER_URL)
     if err != OK:
         master_ws = null
-        status_label.text = "Room server unavailable"
+        status_label.text = "Room service unavailable"
 
 func _master_send(data: Dictionary) -> void:
     if master_ws and master_ws.get_ready_state() == WebSocketPeer.STATE_OPEN:
         master_ws.send_text(JSON.stringify(data))
 
 func _create_room() -> void:
-    if _current_nickname().is_empty():
+    var nickname := _current_nickname()
+    if nickname.is_empty():
+        status_label.text = "Enter a nickname first"
         return
     peer = ENetMultiplayerPeer.new()
     var err := peer.create_server(DEFAULT_PORT, MAX_PLAYERS)
@@ -51,7 +53,7 @@ func _create_room() -> void:
     multiplayer.multiplayer_peer = peer
     server_started = true
     player_names.clear()
-    player_names[1] = _current_nickname()
+    player_names[1] = nickname
     room_code = "CONNECTING..."
     status_label.text = "Creating room..."
     _master_connect("create")
@@ -60,18 +62,23 @@ func _join_room() -> void:
     var dialog := AcceptDialog.new()
     dialog.title = "Join room"
     var box := VBoxContainer.new()
+    var label := Label.new()
+    label.text = "ROOM CODE"
+    box.add_child(label)
     var code_edit := LineEdit.new()
-    code_edit.placeholder_text = "Room code, example K7P4X2"
+    code_edit.placeholder_text = "Example: K7P4X2"
     code_edit.max_length = 6
-    code_edit.text = ""
-    box.add_child(Label.new())
-    box.get_child(0).text = "ROOM CODE"
+    code_edit.alignment = HORIZONTAL_ALIGNMENT_CENTER
     box.add_child(code_edit)
     dialog.add_child(box)
     dialog.confirmed.connect(func():
         var code := code_edit.text.strip_edges().to_upper()
         if code.length() != 6:
             status_label.text = "Enter a 6-character room code"
+            dialog.queue_free()
+            return
+        if _current_nickname().is_empty():
+            status_label.text = "Enter a nickname first"
             dialog.queue_free()
             return
         pending_room_code = code
@@ -116,7 +123,7 @@ func _on_master_message(text: String) -> void:
             if lobby_start_button:
                 _set_lobby_start_state()
         "error":
-            status_label.text = str(msg.get("message", "Room server error"))
+            status_label.text = str(msg.get("message", "Room service error"))
             if lobby_status_label:
                 lobby_status_label.text = status_label.text
 
@@ -127,9 +134,11 @@ func _apply_room_info(room: Dictionary) -> void:
     match_mode = "team" if str(room.get("mode", "ffa")) == "team" else "ffa"
     var players: Array = room.get("players", [])
     player_names.clear()
+    var display_id := 1
     for player in players:
         if typeof(player) == TYPE_DICTIONARY:
-            player_names[str(player.get("id", ""))] = str(player.get("nickname", "Player"))
+            player_names[display_id] = str(player.get("nickname", "Player"))
+            display_id += 1
     if lobby_code_label:
         lobby_code_label.text = "ROOM CODE: %s" % room_code
     _refresh_lobby_players()
