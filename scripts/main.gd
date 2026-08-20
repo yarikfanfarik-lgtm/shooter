@@ -63,3 +63,11 @@ func _start_match() -> void:
     world.nickname = nickname if not nickname.is_empty() else "Player"
     add_child(world)
     world.start_match()
+
+    # The local player must not render their full third-person body in first person.
+    # This prevents the old body-mounted weapon from overlapping the view weapon.
+    var local_player = world.players.get(1)
+    if local_player:
+        var body := local_player.get_node_or_null("BlockCharacter")
+        if body:
+            body.visible = false
