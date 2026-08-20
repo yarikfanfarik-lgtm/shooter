@@ -8,13 +8,17 @@ func _ready() -> void:
 
 func _build_menu() -> void:
     menu = Control.new()
-    menu.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    menu.name = "MainMenu"
     add_child(menu)
+    menu.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    menu.mouse_filter = Control.MOUSE_FILTER_STOP
 
     var bg := ColorRect.new()
+    bg.name = "Background"
     bg.color = Color("11151c")
-    bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     menu.add_child(bg)
+    bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
     var title := Label.new()
     title.text = "BLOCKSTRIKE"
@@ -25,6 +29,8 @@ func _build_menu() -> void:
     var sub := Label.new()
     sub.text = "Blocky tactical shooter"
     sub.position = Vector2(74, 112)
+    sub.add_theme_font_size_override("font_size", 20)
+    sub.add_theme_color_override("font_color", Color("9da7b5"))
     menu.add_child(sub)
 
     var nick_label := Label.new()
@@ -33,41 +39,44 @@ func _build_menu() -> void:
     menu.add_child(nick_label)
 
     var nick := LineEdit.new()
+    nick.name = "Nickname"
     nick.position = Vector2(75, 205)
     nick.size = Vector2(300, 46)
     nick.text = nickname
+    nick.placeholder_text = "Enter nickname"
     nick.max_length = 20
-    nick.text_changed.connect(func(v: String): nickname = v.strip_edges())
+    nick.text_changed.connect(_on_nickname_changed)
     menu.add_child(nick)
 
     var bots := Button.new()
+    bots.name = "PlayVsBots"
     bots.text = "PLAY VS BOTS"
     bots.position = Vector2(75, 285)
     bots.size = Vector2(300, 58)
-    bots.pressed.connect(func():
-        if nickname.is_empty(): nickname = "Player"
-        _start_match()
-    )
+    bots.pressed.connect(_on_play_bots)
     menu.add_child(bots)
 
     var hint := Label.new()
-    hint.text = "WASD • Mouse • LMB Fire • R Reload • Space Jump"
+    hint.text = "WASD • Mouse • LMB Fire • R Reload • 1/2 Weapons • Space Jump"
     hint.position = Vector2(75, 365)
     hint.add_theme_color_override("font_color", Color("9da7b5"))
     menu.add_child(hint)
 
+func _on_nickname_changed(value: String) -> void:
+    nickname = value.strip_edges()
+
+func _on_play_bots() -> void:
+    if nickname.is_empty():
+        nickname = "Player"
+    _start_match()
+
 func _start_match() -> void:
-    menu.visible = false
+    if is_instance_valid(menu):
+        menu.queue_free()
+        menu = null
+
     var world := preload("res://scripts/world.gd").new()
     world.name = "World"
     world.nickname = nickname if not nickname.is_empty() else "Player"
     add_child(world)
     world.start_match()
-
-    # The local player must not render their full third-person body in first person.
-    # This prevents the old body-mounted weapon from overlapping the view weapon.
-    var local_player = world.players.get(1)
-    if local_player:
-        var body := local_player.get_node_or_null("BlockCharacter")
-        if body:
-            body.visible = false
