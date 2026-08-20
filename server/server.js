@@ -13,9 +13,7 @@ function makeCode() {
   let code;
   do {
     code = '';
-    for (let i = 0; i < ROOM_CODE_LENGTH; i++) {
-      code += alphabet[crypto.randomInt(0, alphabet.length)];
-    }
+    for (let i = 0; i < ROOM_CODE_LENGTH; i++) code += alphabet[crypto.randomInt(0, alphabet.length)];
   } while (rooms.has(code));
   return code;
 }
@@ -25,10 +23,19 @@ function cleanName(name) {
   return value.slice(0, 20) || 'Player';
 }
 
+function normalizeAddress(address) {
+  if (!address) return '';
+  if (address.startsWith('::ffff:')) return address.slice(7);
+  if (address === '::1') return '127.0.0.1';
+  return address;
+}
+
 function roomInfo(room) {
   return {
     code: room.code,
     host: room.host,
+    hostAddress: room.hostAddress,
+    gamePort: room.gamePort,
     map: room.map,
     mode: room.mode,
     maxPlayers: MAX_PLAYERS,
@@ -53,13 +60,13 @@ function removePlayer(room, player) {
   if (room.host === player.id) {
     const next = room.players.values().next().value;
     room.host = next ? next.id : null;
-    if (next) send(next.ws, 'host_changed', { host: true });
+    if (next) {
+      room.hostAddress = normalizeAddress(next.ws._socket && next.ws._socket.remoteAddress);
+      send(next.ws, 'host_changed', { host: true });
+    }
   }
-  if (room.players.size === 0) {
-    rooms.delete(room.code);
-  } else {
-    broadcastRoom(room);
-  }
+  if (room.players.size === 0) rooms.delete(room.code);
+  else broadcastRoom(room);
 }
 
 function leaveCurrentRoom(ws) {
@@ -78,6 +85,8 @@ function createRoom(ws, msg) {
   const room = {
     code,
     host: id,
+    hostAddress: normalizeAddress(ws._socket && ws._socket.remoteAddress),
+    gamePort: Number(msg.game_port || 24567),
     mode: msg.mode === 'team' ? 'team' : 'ffa',
     map: String(msg.map || 'construction'),
     players: new Map()
@@ -139,13 +148,10 @@ const server = http.createServer((req, res) => {
 });
 
 const wss = new WebSocketServer({ server });
-
 wss.on('connection', ws => {
   ws.roomCode = null;
   ws.playerId = null;
-
   send(ws, 'hello', { name: 'BlockStrike Server', maxPlayers: MAX_PLAYERS });
-
   ws.on('message', raw => {
     let msg;
     try { msg = JSON.parse(raw.toString()); } catch { return send(ws, 'error', { message: 'Invalid JSON' }); }
@@ -158,7 +164,6 @@ wss.on('connection', ws => {
       default: send(ws, 'error', { message: `Unknown message type: ${msg.type}` });
     }
   });
-
   ws.on('close', () => leaveCurrentRoom(ws));
 });
 
