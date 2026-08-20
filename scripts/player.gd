@@ -17,6 +17,7 @@ var pitch := 0.0
 var bob_time := 0.0
 var recoil := 0.0
 var aiming := false
+var trigger_held := false
 var weapon_mode := 0
 var weapon_name := "AK-47"
 
@@ -28,6 +29,9 @@ const AK_DAMAGE := 34
 const SNIPER_DAMAGE := 100
 const SPEED := 6.0
 const GRAVITY := 18.0
+const NORMAL_FOV := 75.0
+const AK_AIM_FOV := 55.0
+const SNIPER_AIM_FOV := 24.0
 
 const SKIN := Color("c88f6a")
 const ARMOR := Color("252a31")
@@ -46,7 +50,7 @@ func _ready() -> void:
         camera = Camera3D.new()
         camera.position = Vector3(0, 1.68, -0.62)
         camera.current = true
-        camera.fov = 75.0
+        camera.fov = NORMAL_FOV
         add_child(camera)
         _make_view_rifle()
         var hud := preload("res://scripts/hud.gd").new()
@@ -119,9 +123,6 @@ func _make_body() -> void:
     rifle.rotation_degrees = Vector3(-8, 0, -8)
     visual.add_child(rifle)
     _make_weapon(rifle, false)
-
-    # Never render the full third-person body through the local camera.
-    # The local player gets exactly one dedicated pair of first-person arms below.
     if is_local:
         visual.visible = false
 
@@ -142,18 +143,14 @@ func _make_weapon(parent: Node3D, first_person: bool) -> void:
         parent.rotation_degrees = Vector3(-2, -3, -2)
 
 func _make_view_arms(parent: Node3D) -> void:
-    # One controlled pair of chunky low-poly arms. They are children of the weapon,
-    # so aiming/reloading moves the arms together with it.
     var left_sleeve := _box(parent, Vector3(0.24, 0.28, 0.48), Vector3(-0.24, -0.04, 0.24), CLOTH, "FP_LeftSleeve")
     left_sleeve.rotation_degrees = Vector3(12, 0, 24)
     var right_sleeve := _box(parent, Vector3(0.24, 0.28, 0.48), Vector3(0.25, -0.02, 0.28), CLOTH, "FP_RightSleeve")
     right_sleeve.rotation_degrees = Vector3(12, 0, -24)
-
     var left_hand := _box(parent, Vector3(0.24, 0.18, 0.28), Vector3(-0.10, -0.03, -0.05), SKIN, "FP_LeftHand")
     left_hand.rotation_degrees = Vector3(0, 0, 18)
     var right_hand := _box(parent, Vector3(0.24, 0.18, 0.28), Vector3(0.12, -0.04, -0.10), SKIN, "FP_RightHand")
     right_hand.rotation_degrees = Vector3(0, 0, -18)
-
     _box(parent, Vector3(0.28, 0.14, 0.30), Vector3(-0.10, -0.08, 0.10), DARK, "FP_LeftGlove")
     _box(parent, Vector3(0.28, 0.14, 0.30), Vector3(0.12, -0.08, 0.06), DARK, "FP_RightGlove")
 
@@ -170,6 +167,21 @@ func _refresh_weapon() -> void:
     _make_weapon(view_rifle, true)
     _make_view_arms(view_rifle)
 
+func _set_aiming(value: bool) -> void:
+    aiming = value and not reloading
+    if weapon_mode == 1 and aiming:
+        camera.fov = SNIPER_AIM_FOV
+        view_rifle.position = Vector3(0.0, -0.34, -0.92)
+        view_rifle.rotation_degrees = Vector3(0, 0, 0)
+    elif weapon_mode == 0 and aiming:
+        camera.fov = AK_AIM_FOV
+        view_rifle.position = Vector3(0.08, -0.38, -0.94)
+        view_rifle.rotation_degrees = Vector3(0, -1, 0)
+    else:
+        camera.fov = NORMAL_FOV
+        view_rifle.position = Vector3(0.38, -0.28, -0.78)
+        view_rifle.rotation_degrees = Vector3(-2, -3, -2)
+
 func _unhandled_input(event: InputEvent) -> void:
     if not is_local:
         return
@@ -178,12 +190,13 @@ func _unhandled_input(event: InputEvent) -> void:
         pitch = clamp(pitch - event.relative.y * 0.0025, -1.4, 1.4)
         rotation.y = yaw
         camera.rotation.x = pitch
-    if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT:
-        aiming = event.pressed and not reloading
-        camera.fov = 45.0 if aiming and weapon_mode == 1 else (60.0 if aiming else 75.0)
-        view_rifle.position = Vector3(0.02, -0.20, -0.58) if aiming else Vector3(0.38, -0.28, -0.78)
-    if event.is_action_pressed("fire"):
-        _shoot()
+    if event is InputEventMouseButton:
+        if event.button_index == MOUSE_BUTTON_RIGHT:
+            _set_aiming(event.pressed)
+        elif event.button_index == MOUSE_BUTTON_LEFT:
+            trigger_held = event.pressed
+            if event.pressed and weapon_mode == 1:
+                _shoot()
     if event.is_action_pressed("reload"):
         _start_reload()
     if event.is_action_pressed("weapon_1"):
@@ -203,6 +216,8 @@ func _physics_process(delta: float) -> void:
         reload_timer -= delta
         if reload_timer <= 0.0:
             _finish_reload()
+    elif weapon_mode == 0 and trigger_held:
+        _shoot()
     var input_vec := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
     var dir := (transform.basis * Vector3(input_vec.x, 0, input_vec.y)).normalized()
     var speed := SPEED * (0.82 if aiming else 1.0)
@@ -245,10 +260,10 @@ func _start_reload() -> void:
     var mag := SNIPER_MAG if weapon_mode == 1 else AK_MAG
     if reloading or ammo >= mag or reserve_ammo <= 0:
         return
+    trigger_held = false
     reloading = true
     reload_timer = 2.0 if weapon_mode == 1 else 1.35
-    aiming = false
-    camera.fov = 75.0
+    _set_aiming(false)
     var tween := create_tween()
     tween.tween_property(view_rifle, "position", Vector3(0.38, -0.48, -0.70), 0.22)
     tween.tween_property(view_rifle, "rotation_degrees", Vector3(35, -8, -8), 0.35)
@@ -262,16 +277,17 @@ func _finish_reload() -> void:
     ammo += loaded
     reserve_ammo -= loaded
     reloading = false
+    _set_aiming(false)
 
 func _switch_weapon(mode: int) -> void:
     if reloading or mode == weapon_mode:
         return
+    trigger_held = false
     weapon_mode = mode
     weapon_name = "AK-47" if mode == 0 else "SNIPER"
     ammo = AK_MAG if mode == 0 else SNIPER_MAG
     reserve_ammo = AK_RESERVE if mode == 0 else SNIPER_RESERVE
-    aiming = false
-    camera.fov = 75.0
+    _set_aiming(false)
     _refresh_weapon()
 
 func take_damage(amount: int, killer: int) -> void:
