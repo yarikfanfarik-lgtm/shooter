@@ -22,6 +22,8 @@ jobs:
         run: |
           set -e
           mkdir -p "$HOME/godot"
+          sudo apt-get update
+          sudo apt-get install -y unzip wget zip
           wget -q --show-progress \
             https://github.com/godotengine/godot/releases/download/4.7.1-stable/Godot_v4.7.1-stable_linux.x86_64.zip \
             -O /tmp/godot.zip
@@ -49,12 +51,21 @@ jobs:
       - name: Build Windows
         shell: bash
         run: |
+          set -e
           mkdir -p build/windows
           "$HOME/godot/godot" --headless --path . --export-release "Windows Desktop" build/windows/BlockStrike.exe
+          test -f build/windows/BlockStrike.exe
+          test -f build/windows/BlockStrike.pck
+
+      - name: Package Windows build
+        shell: bash
+        run: |
+          cd build/windows
+          zip -9 BlockStrike-Windows.zip BlockStrike.exe BlockStrike.pck
 
       - name: Upload Windows build
         uses: actions/upload-artifact@v4
         with:
           name: BlockStrike-Windows
-          path: build/windows/BlockStrike.exe
+          path: build/windows/BlockStrike-Windows.zip
           if-no-files-found: error
