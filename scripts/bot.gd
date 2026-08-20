@@ -1,53 +1,60 @@
 extends CharacterBody3D
 
-var player_id := 100
-var team := "ffa"
 var world: Node
+var player_id := 100
 var health := 100
-var max_health := 100
-var money := 500
 var target: Node3D
-var think_time := 0.0
+var think := 0.0
+var shoot_timer := 0.0
 
 func _ready() -> void:
     _make_body()
 
 func _make_body() -> void:
     var mesh := MeshInstance3D.new()
-    var box := BoxMesh.new(); box.size = Vector3(0.8,1.8,0.55); mesh.mesh = box
-    var mat := StandardMaterial3D.new(); mat.albedo_color = Color("d04b4b") if team == "red" else Color("4e79d1") if team == "blue" else Color("7f8996")
-    mesh.material_override = mat; mesh.position.y = 0.9; add_child(mesh)
-    var shape := CollisionShape3D.new(); var capsule := CapsuleShape3D.new(); capsule.height=1.8; capsule.radius=0.4; shape.shape=capsule; shape.position.y=0.9; add_child(shape)
+    var box := BoxMesh.new()
+    box.size = Vector3(0.8,1.8,0.55)
+    mesh.mesh = box
+    var mat := StandardMaterial3D.new()
+    mat.albedo_color = Color("d05a55")
+    mesh.material_override = mat
+    mesh.position.y = 0.9
+    add_child(mesh)
+    var collision := CollisionShape3D.new()
+    var capsule := CapsuleShape3D.new()
+    capsule.height = 1.8
+    capsule.radius = 0.4
+    collision.shape = capsule
+    collision.position.y = 0.9
+    add_child(collision)
 
 func _physics_process(delta: float) -> void:
-    think_time -= delta
-    if think_time > 0: return
-    think_time = 0.35
-    target = _find_target()
-    if not target: return
-    var flat := target.global_position; flat.y = global_position.y
+    if not world:
+        return
+    think -= delta
+    shoot_timer -= delta
+    if think > 0.0:
+        return
+    think = 0.25
+    target = world.get_target_for(self)
+    if not target:
+        return
+    var flat := target.global_position
+    flat.y = global_position.y
     look_at(flat, Vector3.UP)
     var distance := global_position.distance_to(target.global_position)
-    if distance > 12:
-        velocity = -global_transform.basis.z * 3.5
+    if distance > 9.0:
+        velocity = -global_transform.basis.z * 3.0
         move_and_slide()
-    elif target.has_method("take_damage"):
-        target.take_damage(10, player_id, false)
+    else:
+        velocity = Vector3.ZERO
+        if shoot_timer <= 0.0 and target.has_method("take_damage"):
+            shoot_timer = 0.7
+            target.take_damage(12, player_id)
 
-func _find_target() -> Node3D:
-    var best: Node3D
-    var best_d := INF
-    for p in world.players.values():
-        if p == self or not is_instance_valid(p): continue
-        if world.match_mode == "team" and p.team == team: continue
-        var d := global_position.distance_to(p.global_position)
-        if d < best_d:
-            best_d = d; best = p
-    return best
-
-func take_damage(amount: int, killer: int, headshot: bool=false) -> void:
+func take_damage(amount: int, killer: int) -> void:
     health -= amount
     if health <= 0:
-        world.award_kill(killer, headshot)
-        health = max_health
-        position = world.spawn_points[player_id % world.spawn_points.size()] if world.spawn_points.size() else Vector3.ZERO
+        world.award_kill(killer)
+        health = 100
+        position = world.spawn_points[player_id % world.spawn_points.size()]

@@ -13,10 +13,9 @@ window/stretch/mode="canvas_items"
 [rendering]
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
-textures/vram_compression/import_etc2_astc=true
 
 [autoload]
-Settings="*res://scripts/settings.gd"
+Game="*res://scripts/game.gd"
 
 [input]
 move_forward={"deadzone":0.2,"events":[Object(InputEventKey,"physical_keycode":87)]}
@@ -26,4 +25,3 @@ move_right={"deadzone":0.2,"events":[Object(InputEventKey,"physical_keycode":68)
 jump={"deadzone":0.2,"events":[Object(InputEventKey,"physical_keycode":32)]}
 fire={"deadzone":0.2,"events":[Object(InputEventMouseButton,"button_index":1)]}
 reload={"deadzone":0.2,"events":[Object(InputEventKey,"physical_keycode":82)]}
-use={"deadzone":0.2,"events":[Object(InputEventKey,"physical_keycode":69)]}
