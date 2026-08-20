@@ -49,8 +49,12 @@ func _build_world() -> void:
     sun.shadow_enabled = true
     add_child(sun)
 
+    # A large collision floor guarantees that players cannot fall through the map.
     _block(Vector3(0, -0.5, 0), Vector3(52, 1, 52), SAND)
     _block(Vector3(0, 0.03, 0), Vector3(30, 0.12, 28), SAND_LIGHT)
+
+    # Invisible safety floor well below the playable area.
+    _block(Vector3(0, -8.0, 0), Vector3(90, 0.5, 90), SAND)
 
     _block(Vector3(0, 2.0, -26), Vector3(52, 4, 1), WALL)
     _block(Vector3(0, 2.0, 26), Vector3(52, 4, 1), WALL)
