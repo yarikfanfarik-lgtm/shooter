@@ -3,6 +3,7 @@ extends Node
 var sensitivity := 1.0
 var fov := 90.0
 var graphics := 1
+var player_name := "Player"
 var mobile_layout := {
     "fire": {"x": 0.86, "y": 0.78, "size": 96.0},
     "jump": {"x": 0.78, "y": 0.68, "size": 76.0},
@@ -18,6 +19,7 @@ func save() -> void:
     cfg.set_value("controls", "sensitivity", sensitivity)
     cfg.set_value("video", "fov", fov)
     cfg.set_value("video", "graphics", graphics)
+    cfg.set_value("profile", "player_name", player_name)
     cfg.set_value("mobile", "layout", mobile_layout)
     cfg.save("user://settings.cfg")
 
@@ -28,4 +30,7 @@ func load_settings() -> void:
     sensitivity = float(cfg.get_value("controls", "sensitivity", sensitivity))
     fov = float(cfg.get_value("video", "fov", fov))
     graphics = int(cfg.get_value("video", "graphics", graphics))
+    player_name = str(cfg.get_value("profile", "player_name", player_name)).strip_edges()
+    if player_name.is_empty():
+        player_name = "Player"
     mobile_layout = cfg.get_value("mobile", "layout", mobile_layout)
