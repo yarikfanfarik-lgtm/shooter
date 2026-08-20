@@ -33,135 +33,62 @@ const NORMAL_FOV := 75.0
 const AK_AIM_FOV := 55.0
 const SNIPER_AIM_FOV := 24.0
 
-const SKIN := Color("c88f6a")
-const ARMOR := Color("252a31")
-const ARMOR_LIGHT := Color("39414a")
-const DARK := Color("171a1f")
-const METAL := Color("4b5158")
-const CLOTH := Color("343941")
-const CAMO_A := Color("5b5b4f")
-const CAMO_B := Color("777565")
-const BOOT := Color("202328")
-const WOOD := Color("765238")
-
 func _ready() -> void:
-    _make_body()
     if is_local:
-        camera = Camera3D.new()
-        camera.position = Vector3(0, 1.68, -0.62)
-        camera.current = true
-        camera.fov = NORMAL_FOV
-        add_child(camera)
-        _make_view_rifle()
-        var hud := preload("res://scripts/hud.gd").new()
-        get_tree().root.add_child.call_deferred(hud)
-        hud.call_deferred("setup", self)
-        Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+        add_to_group("local_player")
+        _setup_camera()
+        _refresh_weapon()
 
-func _box(parent: Node3D, size: Vector3, pos: Vector3, color: Color, name := "Block") -> MeshInstance3D:
-    var mesh := MeshInstance3D.new()
-    mesh.name = name
+func _setup_camera() -> void:
+    camera = Camera3D.new()
+    camera.position = Vector3(0, 1.55, 0)
+    camera.current = true
+    camera.fov = NORMAL_FOV
+    add_child(camera)
+
+func _make_weapon(parent: Node3D, first_person := false) -> void:
+    var body := MeshInstance3D.new()
     var box := BoxMesh.new()
-    box.size = size
-    mesh.mesh = box
+    box.size = Vector3(0.18, 0.16, 0.75 if weapon_mode == 0 else 0.95)
+    body.mesh = box
     var mat := StandardMaterial3D.new()
-    mat.albedo_color = color
-    mat.roughness = 0.78
-    mesh.material_override = mat
-    mesh.position = pos
-    parent.add_child(mesh)
-    return mesh
-
-func _make_body() -> void:
-    var visual := Node3D.new()
-    visual.name = "BlockCharacter"
-    add_child(visual)
-    _box(visual, Vector3(0.34, 0.18, 0.62), Vector3(-0.22, 0.09, -0.02), BOOT, "LeftBoot")
-    _box(visual, Vector3(0.34, 0.18, 0.62), Vector3(0.22, 0.09, -0.02), BOOT, "RightBoot")
-    _box(visual, Vector3(0.32, 0.58, 0.34), Vector3(-0.22, 0.42, 0), CAMO_A, "LeftShin")
-    _box(visual, Vector3(0.32, 0.58, 0.34), Vector3(0.22, 0.42, 0), CAMO_B, "RightShin")
-    _box(visual, Vector3(0.36, 0.16, 0.38), Vector3(-0.22, 0.70, -0.01), DARK, "LeftKnee")
-    _box(visual, Vector3(0.36, 0.16, 0.38), Vector3(0.22, 0.70, -0.01), DARK, "RightKnee")
-    _box(visual, Vector3(0.38, 0.58, 0.40), Vector3(-0.22, 0.96, 0), CLOTH, "LeftThigh")
-    _box(visual, Vector3(0.38, 0.58, 0.40), Vector3(0.22, 0.96, 0), CLOTH, "RightThigh")
-    _box(visual, Vector3(0.92, 0.14, 0.52), Vector3(0, 1.25, 0), DARK, "Belt")
-    _box(visual, Vector3(0.86, 0.72, 0.48), Vector3(0, 1.62, 0), ARMOR, "Torso")
-    _box(visual, Vector3(0.70, 0.46, 0.10), Vector3(0, 1.68, -0.27), ARMOR_LIGHT, "ChestPlate")
-    _box(visual, Vector3(0.22, 0.25, 0.10), Vector3(-0.27, 1.50, -0.27), DARK, "LeftPouch")
-    _box(visual, Vector3(0.22, 0.25, 0.10), Vector3(0.27, 1.50, -0.27), DARK, "RightPouch")
-    _box(visual, Vector3(0.16, 0.28, 0.12), Vector3(-0.38, 1.35, -0.25), ARMOR_LIGHT, "LeftMagazine")
-    _box(visual, Vector3(0.16, 0.28, 0.12), Vector3(0.38, 1.35, -0.25), ARMOR_LIGHT, "RightMagazine")
-    _box(visual, Vector3(0.25, 0.18, 0.25), Vector3(0, 2.05, 0), SKIN, "Neck")
-    _box(visual, Vector3(0.54, 0.52, 0.50), Vector3(0, 2.32, 0), SKIN, "Head")
-    _box(visual, Vector3(0.60, 0.14, 0.54), Vector3(0, 2.58, 0), DARK, "HelmetTop")
-    _box(visual, Vector3(0.68, 0.14, 0.48), Vector3(0, 2.48, 0), ARMOR, "HelmetBand")
-    _box(visual, Vector3(0.58, 0.14, 0.08), Vector3(0, 2.30, -0.27), DARK, "Visor")
-    _box(visual, Vector3(0.16, 0.12, 0.06), Vector3(-0.18, 2.30, -0.30), METAL, "VisorLeft")
-    _box(visual, Vector3(0.16, 0.12, 0.06), Vector3(0.18, 2.30, -0.30), METAL, "VisorRight")
-    _box(visual, Vector3(0.28, 0.28, 0.48), Vector3(-0.57, 1.87, 0), ARMOR_LIGHT, "LeftShoulder")
-    _box(visual, Vector3(0.28, 0.28, 0.48), Vector3(0.57, 1.87, 0), ARMOR_LIGHT, "RightShoulder")
-    _box(visual, Vector3(0.30, 0.48, 0.34), Vector3(-0.68, 1.60, 0), CLOTH, "LeftUpperArm")
-    _box(visual, Vector3(0.30, 0.48, 0.34), Vector3(0.68, 1.60, 0), CLOTH, "RightUpperArm")
-    _box(visual, Vector3(0.34, 0.16, 0.38), Vector3(-0.68, 1.33, 0), DARK, "LeftElbow")
-    _box(visual, Vector3(0.34, 0.16, 0.38), Vector3(0.68, 1.33, 0), DARK, "RightElbow")
-    _box(visual, Vector3(0.30, 0.40, 0.34), Vector3(-0.62, 1.10, 0), CLOTH, "LeftForearm")
-    _box(visual, Vector3(0.30, 0.40, 0.34), Vector3(0.62, 1.10, 0), CLOTH, "RightForearm")
-    _box(visual, Vector3(0.28, 0.18, 0.30), Vector3(-0.58, 0.84, -0.02), DARK, "LeftGlove")
-    _box(visual, Vector3(0.28, 0.18, 0.30), Vector3(0.58, 0.84, -0.02), DARK, "RightGlove")
-
-    var body := CollisionShape3D.new()
-    var capsule := CapsuleShape3D.new()
-    capsule.height = 2.0
-    capsule.radius = 0.38
-    body.shape = capsule
-    body.position.y = 1.05
-    add_child(body)
-
-    var rifle := Node3D.new()
-    rifle.name = "Rifle"
-    rifle.position = Vector3(0.42, 1.42, -0.42)
-    rifle.rotation_degrees = Vector3(-8, 0, -8)
-    visual.add_child(rifle)
-    _make_weapon(rifle, false)
-    if is_local:
-        visual.visible = false
-
-func _make_weapon(parent: Node3D, first_person: bool) -> void:
-    var sniper := weapon_mode == 1
-    _box(parent, Vector3(0.18, 0.18, 1.10 if sniper else 0.82), Vector3(0, 0, 0), DARK, "Receiver")
-    _box(parent, Vector3(0.08, 0.08, 1.10 if sniper else 0.58), Vector3(0, 0, -0.72), METAL, "Barrel")
-    _box(parent, Vector3(0.18, 0.12, 0.40), Vector3(0, -0.06, 0.52), WOOD, "Stock")
-    _box(parent, Vector3(0.16, 0.30, 0.18), Vector3(0, -0.20, -0.08), DARK, "Magazine")
-    _box(parent, Vector3(0.20, 0.08, 0.32), Vector3(0, 0.14, 0.04), ARMOR_LIGHT, "Rail")
-    _box(parent, Vector3(0.10, 0.12, 0.12), Vector3(0, 0.22, -0.12), METAL, "Sight")
-    if sniper:
-        _box(parent, Vector3(0.13, 0.13, 0.48), Vector3(0, 0.30, -0.10), DARK, "Scope")
-    _box(parent, Vector3(0.12, 0.18, 0.14), Vector3(0, -0.10, 0.20), WOOD, "Grip")
-    _box(parent, Vector3(0.18, 0.08, 0.20), Vector3(0, 0.01, -1.30 if sniper else -0.94), DARK, "Muzzle")
-    if first_person:
-        parent.position = Vector3(0.38, -0.28, -0.78)
-        parent.rotation_degrees = Vector3(-2, -3, -2)
+    mat.albedo_color = Color("30343a") if weapon_mode == 0 else Color("24272c")
+    mat.roughness = 0.5
+    body.material_override = mat
+    parent.add_child(body)
+    if weapon_mode == 0:
+        var mag := MeshInstance3D.new()
+        var mag_box := BoxMesh.new()
+        mag_box.size = Vector3(0.12, 0.34, 0.16)
+        mag.mesh = mag_box
+        mag.position = Vector3(0, -0.18, 0.02)
+        mag.material_override = mat
+        parent.add_child(mag)
+    var barrel := MeshInstance3D.new()
+    var barrel_box := BoxMesh.new()
+    barrel_box.size = Vector3(0.10, 0.10, 0.55 if weapon_mode == 0 else 1.0)
+    barrel.mesh = barrel_box
+    barrel.position = Vector3(0, 0.01, -0.62 if weapon_mode == 0 else -0.95)
+    barrel.material_override = mat
+    parent.add_child(barrel)
 
 func _make_view_arms(parent: Node3D) -> void:
-    var left_sleeve := _box(parent, Vector3(0.24, 0.28, 0.48), Vector3(-0.24, -0.04, 0.24), CLOTH, "FP_LeftSleeve")
-    left_sleeve.rotation_degrees = Vector3(12, 0, 24)
-    var right_sleeve := _box(parent, Vector3(0.24, 0.28, 0.48), Vector3(0.25, -0.02, 0.28), CLOTH, "FP_RightSleeve")
-    right_sleeve.rotation_degrees = Vector3(12, 0, -24)
-    var left_hand := _box(parent, Vector3(0.24, 0.18, 0.28), Vector3(-0.10, -0.03, -0.05), SKIN, "FP_LeftHand")
-    left_hand.rotation_degrees = Vector3(0, 0, 18)
-    var right_hand := _box(parent, Vector3(0.24, 0.18, 0.28), Vector3(0.12, -0.04, -0.10), SKIN, "FP_RightHand")
-    right_hand.rotation_degrees = Vector3(0, 0, -18)
-    _box(parent, Vector3(0.28, 0.14, 0.30), Vector3(-0.10, -0.08, 0.10), DARK, "FP_LeftGlove")
-    _box(parent, Vector3(0.28, 0.14, 0.30), Vector3(0.12, -0.08, 0.06), DARK, "FP_RightGlove")
-
-func _make_view_rifle() -> void:
-    view_rifle = Node3D.new()
-    view_rifle.name = "FirstPersonWeapon"
-    camera.add_child(view_rifle)
-    _make_weapon(view_rifle, true)
-    _make_view_arms(view_rifle)
+    for side in [-1.0, 1.0]:
+        var arm := MeshInstance3D.new()
+        var box := BoxMesh.new()
+        box.size = Vector3(0.14, 0.14, 0.48)
+        arm.mesh = box
+        arm.position = Vector3(0.18 * side, -0.16, -0.34)
+        arm.rotation_degrees = Vector3(-18, 0, 8 * side)
+        var mat := StandardMaterial3D.new()
+        mat.albedo_color = Color("4d5660")
+        mat.roughness = 0.8
+        arm.material_override = mat
+        parent.add_child(arm)
 
 func _refresh_weapon() -> void:
+    if not is_local or view_rifle == null:
+        return
     for child in view_rifle.get_children():
         child.queue_free()
     _make_weapon(view_rifle, true)
@@ -172,15 +99,12 @@ func _set_aiming(value: bool) -> void:
     if weapon_mode == 1 and aiming:
         camera.fov = SNIPER_AIM_FOV
         view_rifle.position = Vector3(0.0, -0.34, -0.92)
-        view_rifle.rotation_degrees = Vector3(0, 0, 0)
     elif weapon_mode == 0 and aiming:
         camera.fov = AK_AIM_FOV
         view_rifle.position = Vector3(0.08, -0.38, -0.94)
-        view_rifle.rotation_degrees = Vector3(0, -1, 0)
     else:
         camera.fov = NORMAL_FOV
         view_rifle.position = Vector3(0.38, -0.28, -0.78)
-        view_rifle.rotation_degrees = Vector3(-2, -3, -2)
 
 func _unhandled_input(event: InputEvent) -> void:
     if not is_local:
@@ -197,16 +121,25 @@ func _unhandled_input(event: InputEvent) -> void:
             trigger_held = event.pressed
             if event.pressed and weapon_mode == 1:
                 _shoot()
-    if event.is_action_pressed("reload"):
-        _start_reload()
-    if event.is_action_pressed("weapon_1"):
-        _switch_weapon(0)
-    if event.is_action_pressed("weapon_2"):
-        _switch_weapon(1)
-    if event.is_action_pressed("jump") and is_on_floor():
-        velocity.y = 7.0
-    if event.is_action_pressed("ui_cancel"):
-        Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+    if event is InputEventKey and event.pressed and not event.echo:
+        match event.physical_keycode:
+            KEY_G:
+                if world and world.has_method("throw_smoke"):
+                    world.throw_smoke()
+            KEY_H:
+                if world and world.has_method("place_mine"):
+                    world.place_mine()
+            KEY_R:
+                _start_reload()
+            KEY_1:
+                _switch_weapon(0)
+            KEY_2:
+                _switch_weapon(1)
+            KEY_SPACE:
+                if is_on_floor():
+                    velocity.y = 7.0
+            KEY_ESCAPE:
+                Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 
 func _physics_process(delta: float) -> void:
     if not is_local:
@@ -231,7 +164,7 @@ func _physics_process(delta: float) -> void:
             bob_time += delta * 9.0
             view_rifle.position.y = -0.28 + sin(bob_time) * 0.018
             view_rifle.position.x = 0.38 + cos(bob_time * 0.5) * 0.012
-    recoil = move_toward(recoil, 0.0, delta * 8.0)
+    recoil = move_toward(recoil, 0.0, delta * 10.0)
     if camera:
         camera.rotation.x = pitch - recoil
 
@@ -242,7 +175,7 @@ func _shoot() -> void:
         return
     ammo -= 1
     fire_cooldown = 0.75 if weapon_mode == 1 else 0.12
-    recoil = 0.055 if weapon_mode == 1 else 0.018
+    recoil = 0.055 if weapon_mode == 1 else 0.035
     var from := camera.global_position
     var dir := -camera.global_transform.basis.z
     if not aiming:
@@ -264,11 +197,12 @@ func _start_reload() -> void:
     reloading = true
     reload_timer = 2.0 if weapon_mode == 1 else 1.35
     _set_aiming(false)
-    var tween := create_tween()
-    tween.tween_property(view_rifle, "position", Vector3(0.38, -0.48, -0.70), 0.22)
-    tween.tween_property(view_rifle, "rotation_degrees", Vector3(35, -8, -8), 0.35)
-    tween.tween_property(view_rifle, "position", Vector3(0.38, -0.20, -0.82), 0.35)
-    tween.tween_property(view_rifle, "rotation_degrees", Vector3(-2, -3, -2), 0.35)
+    if view_rifle:
+        var tween := create_tween()
+        tween.tween_property(view_rifle, "position", Vector3(0.38, -0.48, -0.70), 0.22)
+        tween.tween_property(view_rifle, "rotation_degrees", Vector3(35, -8, -8), 0.35)
+        tween.tween_property(view_rifle, "position", Vector3(0.38, -0.20, -0.82), 0.35)
+        tween.tween_property(view_rifle, "rotation_degrees", Vector3(-2, -3, -2), 0.35)
 
 func _finish_reload() -> void:
     var mag := SNIPER_MAG if weapon_mode == 1 else AK_MAG
