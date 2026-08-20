@@ -27,6 +27,9 @@ func start_match() -> void:
     _spawn_player()
     for i in range(7):
         _spawn_bot(i)
+    var tactical := preload("res://scripts/tactical.gd").new()
+    tactical.name = "TacticalEquipment"
+    add_child(tactical)
 
 func _build_world() -> void:
     var env := WorldEnvironment.new()
@@ -160,6 +163,7 @@ func _spawn_player() -> void:
     p.position = spawn_points[0]
     p.is_local = true
     add_child(p)
+    p.add_to_group("local_player")
     players[1] = p
 
 func _spawn_bot(index: int) -> void:
