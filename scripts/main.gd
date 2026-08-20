@@ -106,7 +106,11 @@ func _create_room() -> void:
         return
     multiplayer.multiplayer_peer = peer
     server_started = true
-    room_code = _make_room_code(IP.get_local_addresses().filter(func(x): return x.find(".") >= 0), DEFAULT_PORT)
+    var addresses: Array = []
+    for address in IP.get_local_addresses():
+        if str(address).find(".") >= 0:
+            addresses.append(address)
+    room_code = _make_room_code(addresses, DEFAULT_PORT)
     status_label.text = "Room created • code: %s • port %d" % [room_code, DEFAULT_PORT]
     _show_lobby(true)
 
