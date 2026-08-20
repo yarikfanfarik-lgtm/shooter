@@ -6,23 +6,29 @@ var input_lock := false
 
 func _ready() -> void:
     process_priority = 100
+    set_process_input(true)
     add_to_group("tactical_manager")
 
-func _unhandled_input(event: InputEvent) -> void:
+func _input(event: InputEvent) -> void:
+    if input_lock:
+        return
     if event is InputEventKey and event.pressed and not event.echo:
-        if event.keycode == KEY_G:
+        if event.physical_keycode == KEY_G:
+            get_viewport().set_input_as_handled()
             _throw_smoke()
-        elif event.keycode == KEY_H:
+        elif event.physical_keycode == KEY_H:
+            get_viewport().set_input_as_handled()
             _place_mine()
 
 func _process(_delta: float) -> void:
     var player = _get_player()
     if player == null:
         return
+    # Keep the recoil noticeable, but controlled.
     if player.weapon_mode == 0:
-        player.recoil = minf(player.recoil, 0.009)
+        player.recoil = minf(player.recoil, 0.045)
     else:
-        player.recoil = minf(player.recoil, 0.035)
+        player.recoil = minf(player.recoil, 0.055)
 
 func _get_player():
     var players := get_tree().get_nodes_in_group("local_player")
@@ -57,9 +63,7 @@ func _place_mine() -> void:
     var query := PhysicsRayQueryParameters3D.create(from, to)
     query.exclude = [player]
     var hit := player.get_world_3d().direct_space_state.intersect_ray(query)
-    if hit.is_empty():
-        return
-    if hit.normal.y < 0.55:
+    if hit.is_empty() or hit.normal.y < 0.55:
         return
     mine_count -= 1
     input_lock = true
