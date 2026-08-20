@@ -3,8 +3,8 @@ extends Node3D
 var nickname := "Player"
 var players: Dictionary = {}
 var spawn_points := [
-    Vector3(-18, 1.2, -18), Vector3(18, 1.2, 18),
-    Vector3(18, 1.2, -18), Vector3(-18, 1.2, 18),
+    Vector3(-13.0, 1.2, -13.0), Vector3(13.0, 1.2, 13.0),
+    Vector3(13.0, 1.2, -13.0), Vector3(-13.0, 1.2, 13.0),
     Vector3(0, 1.2, -20), Vector3(0, 1.2, 20),
     Vector3(-20, 1.2, 0), Vector3(20, 1.2, 0)
 ]
@@ -46,56 +46,46 @@ func _build_world() -> void:
     sun.shadow_enabled = true
     add_child(sun)
 
-    # Compact FPS map: much less empty space, clear lanes, alleys and places to hide.
     _block(Vector3(0, -0.5, 0), Vector3(52, 1, 52), SAND)
     _block(Vector3(0, 0.03, 0), Vector3(30, 0.12, 28), SAND_LIGHT)
 
-    # Outer boundary. The map is intentionally closed so fights happen inside the playable area.
     _block(Vector3(0, 2.0, -26), Vector3(52, 4, 1), WALL)
     _block(Vector3(0, 2.0, 26), Vector3(52, 4, 1), WALL)
     _block(Vector3(-26, 2.0, 0), Vector3(1, 4, 52), WALL)
     _block(Vector3(26, 2.0, 0), Vector3(1, 4, 52), WALL)
 
-    # Only two large buildings. They form opposite corners instead of filling the whole map.
     _building(Vector3(-19, 3.5, -18), Vector3(11, 7, 10))
     _building(Vector3(19, 3.5, 18), Vector3(11, 7, 10))
 
-    # Narrow side corridors / alleys.
     _block(Vector3(-12.5, 1.6, -8), Vector3(1.5, 3.2, 13), WALL)
     _block(Vector3(-8, 1.6, -12.5), Vector3(9, 3.2, 1.5), WALL)
     _block(Vector3(12.5, 1.6, 8), Vector3(1.5, 3.2, 13), WALL)
     _block(Vector3(8, 1.6, 12.5), Vector3(9, 3.2, 1.5), WALL)
 
-    # Central combat lane with two offset walls. Their stagger creates corners to peek from.
     _block(Vector3(-5.5, 1.4, 0), Vector3(2.2, 2.8, 10), WALL)
     _block(Vector3(5.5, 1.4, 0), Vector3(2.2, 2.8, 10), WALL)
     _block(Vector3(0, 1.4, -7.5), Vector3(7, 2.8, 1.6), WALL)
     _block(Vector3(0, 1.4, 7.5), Vector3(7, 2.8, 1.6), WALL)
 
-    # Short cover pieces make the arena playable instead of one giant open square.
     _block(Vector3(-2.5, 0.9, -3.2), Vector3(3.2, 1.8, 1.2), WALL_LIGHT)
     _block(Vector3(2.5, 0.9, 3.2), Vector3(3.2, 1.8, 1.2), WALL_LIGHT)
     _block(Vector3(-9, 0.8, 5.5), Vector3(4.0, 1.6, 1.2), WALL_LIGHT)
     _block(Vector3(9, 0.8, -5.5), Vector3(4.0, 1.6, 1.2), WALL_LIGHT)
 
-    # Crates are concentrated in a few tactical pockets, not scattered everywhere.
     _crate_stack(Vector3(-7.5, 1.0, -4.0), 2)
     _crate_stack(Vector3(7.5, 1.0, 4.0), 2)
     _crate_stack(Vector3(-15.5, 1.0, 8.5), 2)
     _crate_stack(Vector3(15.5, 1.0, -8.5), 2)
 
-    # Small rooftop routes and raised cover near the two buildings.
     _stairs(Vector3(-13.5, 0.5, -17), 7, 1.0)
     _stairs(Vector3(13.5, 0.5, 17), 7, -1.0)
 
     _facade_details(Vector3(-19, 3.5, -18))
     _facade_details(Vector3(19, 3.5, 18))
 
-    # A few palms for the reference-map atmosphere, leaving the lanes unobstructed.
     for p in [Vector3(-23, 0, 8), Vector3(23, 0, -8), Vector3(-8, 0, 22), Vector3(8, 0, -22)]:
         _palm(p)
 
-    # Simple paving paths emphasize the intended routes through the map.
     for x in [-9, -6, -3, 0, 3, 6, 9]:
         _block(Vector3(x, 0.10, 0), Vector3(2.2, 0.12, 1.4), WALL_LIGHT)
     for z in [-9, -6, -3, 3, 6, 9]:
