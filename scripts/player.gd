@@ -20,7 +20,6 @@ var aiming := false
 var trigger_held := false
 var weapon_mode := 0
 var weapon_name := "AK-47"
-
 const AK_MAG := 30
 const AK_RESERVE := 90
 const SNIPER_MAG := 5
@@ -32,8 +31,11 @@ const GRAVITY := 18.0
 const NORMAL_FOV := 75.0
 const AK_AIM_FOV := 55.0
 const SNIPER_AIM_FOV := 24.0
+const SURFACE_Y := 1.2
 
 func _ready() -> void:
+    collision_layer = 0
+    collision_mask = 0
     if is_local:
         add_to_group("local_player")
         _setup_camera()
@@ -89,8 +91,7 @@ func _make_view_arms(parent: Node3D) -> void:
 func _refresh_weapon() -> void:
     if not is_local or view_rifle == null:
         return
-    for child in view_rifle.get_children():
-        child.queue_free()
+    for child in view_rifle.get_children(): child.queue_free()
     _make_weapon(view_rifle, true)
     _make_view_arms(view_rifle)
 
@@ -107,71 +108,55 @@ func _set_aiming(value: bool) -> void:
         view_rifle.position = Vector3(0.38, -0.28, -0.78)
 
 func _unhandled_input(event: InputEvent) -> void:
-    if not is_local:
-        return
+    if not is_local: return
     if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
         yaw -= event.relative.x * 0.0025
         pitch = clamp(pitch - event.relative.y * 0.0025, -1.4, 1.4)
         rotation.y = yaw
         camera.rotation.x = pitch
     if event is InputEventMouseButton:
-        if event.button_index == MOUSE_BUTTON_RIGHT:
-            _set_aiming(event.pressed)
+        if event.button_index == MOUSE_BUTTON_RIGHT: _set_aiming(event.pressed)
         elif event.button_index == MOUSE_BUTTON_LEFT:
             trigger_held = event.pressed
-            if event.pressed and weapon_mode == 1:
-                _shoot()
+            if event.pressed and weapon_mode == 1: _shoot()
     if event is InputEventKey and event.pressed and not event.echo:
         match event.physical_keycode:
-            KEY_G:
-                if world and world.has_method("throw_smoke"):
-                    world.throw_smoke()
-            KEY_H:
-                if world and world.has_method("place_mine"):
-                    world.place_mine()
-            KEY_R:
-                _start_reload()
-            KEY_1:
-                _switch_weapon(0)
-            KEY_2:
-                _switch_weapon(1)
-            KEY_SPACE:
-                if is_on_floor():
-                    velocity.y = 7.0
-            KEY_ESCAPE:
-                Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+            KEY_G: if world and world.has_method("throw_smoke"): world.throw_smoke()
+            KEY_H: if world and world.has_method("place_mine"): world.place_mine()
+            KEY_R: _start_reload()
+            KEY_1: _switch_weapon(0)
+            KEY_2: _switch_weapon(1)
+            KEY_SPACE: if is_on_floor(): velocity.y = 7.0
+            KEY_ESCAPE: Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 
 func _physics_process(delta: float) -> void:
-    if not is_local:
-        return
+    if not is_local: return
     fire_cooldown = maxf(0.0, fire_cooldown - delta)
     if reloading:
         reload_timer -= delta
-        if reload_timer <= 0.0:
-            _finish_reload()
-    elif weapon_mode == 0 and trigger_held:
-        _shoot()
+        if reload_timer <= 0.0: _finish_reload()
+    elif weapon_mode == 0 and trigger_held: _shoot()
     var input_vec := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
     var dir := (transform.basis * Vector3(input_vec.x, 0, input_vec.y)).normalized()
     var speed := SPEED * (0.82 if aiming else 1.0)
     velocity.x = move_toward(velocity.x, dir.x * speed, 25.0 * delta)
     velocity.z = move_toward(velocity.z, dir.z * speed, 25.0 * delta)
-    if not is_on_floor():
-        velocity.y -= GRAVITY * delta
+    # Temporary map mode: no physical map collision. Keep the player glued to the play surface.
+    velocity.y = 0.0
+    global_position.y = SURFACE_Y
     move_and_slide()
+    global_position.y = SURFACE_Y
     if view_rifle and not reloading and not aiming:
         if input_vec.length() > 0.1:
             bob_time += delta * 9.0
             view_rifle.position.y = -0.28 + sin(bob_time) * 0.018
             view_rifle.position.x = 0.38 + cos(bob_time * 0.5) * 0.012
     recoil = move_toward(recoil, 0.0, delta * 10.0)
-    if camera:
-        camera.rotation.x = pitch - recoil
+    if camera: camera.rotation.x = pitch - recoil
 
 func _shoot() -> void:
     if reloading or ammo <= 0 or fire_cooldown > 0.0:
-        if ammo <= 0 and not reloading:
-            _start_reload()
+        if ammo <= 0 and not reloading: _start_reload()
         return
     ammo -= 1
     fire_cooldown = 0.75 if weapon_mode == 1 else 0.12
@@ -191,18 +176,17 @@ func _shoot() -> void:
 
 func _start_reload() -> void:
     var mag := SNIPER_MAG if weapon_mode == 1 else AK_MAG
-    if reloading or ammo >= mag or reserve_ammo <= 0:
-        return
+    if reloading or ammo >= mag or reserve_ammo <= 0: return
     trigger_held = false
     reloading = true
     reload_timer = 2.0 if weapon_mode == 1 else 1.35
     _set_aiming(false)
     if view_rifle:
         var tween := create_tween()
-        tween.tween_property(view_rifle, "position", Vector3(0.38, -0.48, -0.70), 0.22)
-        tween.tween_property(view_rifle, "rotation_degrees", Vector3(35, -8, -8), 0.35)
-        tween.tween_property(view_rifle, "position", Vector3(0.38, -0.20, -0.82), 0.35)
-        tween.tween_property(view_rifle, "rotation_degrees", Vector3(-2, -3, -2), 0.35)
+        tween.tween_property(view_rifle, "position", Vector3(0.38,-0.48,-0.70), 0.22)
+        tween.tween_property(view_rifle, "rotation_degrees", Vector3(35,-8,-8), 0.35)
+        tween.tween_property(view_rifle, "position", Vector3(0.38,-0.20,-0.82), 0.35)
+        tween.tween_property(view_rifle, "rotation_degrees", Vector3(-2,-3,-2), 0.35)
 
 func _finish_reload() -> void:
     var mag := SNIPER_MAG if weapon_mode == 1 else AK_MAG
@@ -214,8 +198,7 @@ func _finish_reload() -> void:
     _set_aiming(false)
 
 func _switch_weapon(mode: int) -> void:
-    if reloading or mode == weapon_mode:
-        return
+    if reloading or mode == weapon_mode: return
     trigger_held = false
     weapon_mode = mode
     weapon_name = "AK-47" if mode == 0 else "SNIPER"
@@ -227,7 +210,6 @@ func _switch_weapon(mode: int) -> void:
 func take_damage(amount: int, killer: int) -> void:
     health -= amount
     if health <= 0:
-        if world:
-            world.award_kill(killer)
+        if world: world.award_kill(killer)
         health = 100
         position = world.spawn_points[randi() % world.spawn_points.size()]
