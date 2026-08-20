@@ -27,73 +27,100 @@ const SNIPER_RESERVE := 25
 const AK_DAMAGE := 34
 const SNIPER_DAMAGE := 100
 const SPEED := 6.0
-const GRAVITY := 18.0
 const NORMAL_FOV := 75.0
 const AK_AIM_FOV := 55.0
 const SNIPER_AIM_FOV := 24.0
 const SURFACE_Y := 1.2
 
 func _ready() -> void:
+    # Keep the player body from fighting the temporary visual-only map.
     collision_layer = 0
     collision_mask = 0
     if is_local:
         add_to_group("local_player")
         _setup_camera()
-        _refresh_weapon()
+        _setup_weapon()
+        Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 func _setup_camera() -> void:
     camera = Camera3D.new()
     camera.position = Vector3(0, 1.55, 0)
     camera.current = true
     camera.fov = NORMAL_FOV
+    camera.near = 0.03
+    camera.far = 500.0
     add_child(camera)
 
-func _make_weapon(parent: Node3D, first_person := false) -> void:
+func _setup_weapon() -> void:
+    view_rifle = Node3D.new()
+    view_rifle.name = "FirstPersonWeapon"
+    camera.add_child(view_rifle)
+    view_rifle.position = Vector3(0.38, -0.28, -0.78)
+    view_rifle.rotation = Vector3.ZERO
+    _refresh_weapon()
+
+func _make_weapon(parent: Node3D) -> void:
+    var mat := StandardMaterial3D.new()
+    mat.albedo_color = Color("30343a") if weapon_mode == 0 else Color("24272c")
+    mat.metallic = 0.35
+    mat.roughness = 0.38
+
     var body := MeshInstance3D.new()
     var box := BoxMesh.new()
     box.size = Vector3(0.18, 0.16, 0.75 if weapon_mode == 0 else 0.95)
     body.mesh = box
-    var mat := StandardMaterial3D.new()
-    mat.albedo_color = Color("30343a") if weapon_mode == 0 else Color("24272c")
-    mat.roughness = 0.5
     body.material_override = mat
+    body.position = Vector3(0, 0, 0)
     parent.add_child(body)
-    if weapon_mode == 0:
-        var mag := MeshInstance3D.new()
-        var mag_box := BoxMesh.new()
-        mag_box.size = Vector3(0.12, 0.34, 0.16)
-        mag.mesh = mag_box
-        mag.position = Vector3(0, -0.18, 0.02)
-        mag.material_override = mat
-        parent.add_child(mag)
+
     var barrel := MeshInstance3D.new()
     var barrel_box := BoxMesh.new()
-    barrel_box.size = Vector3(0.10, 0.10, 0.55 if weapon_mode == 0 else 1.0)
+    barrel_box.size = Vector3(0.08, 0.08, 0.65 if weapon_mode == 0 else 1.05)
     barrel.mesh = barrel_box
-    barrel.position = Vector3(0, 0.01, -0.62 if weapon_mode == 0 else -0.95)
+    barrel.position = Vector3(0, 0.01, -0.62 if weapon_mode == 0 else -0.98)
     barrel.material_override = mat
     parent.add_child(barrel)
 
+    if weapon_mode == 0:
+        var mag := MeshInstance3D.new()
+        var mag_box := BoxMesh.new()
+        mag_box.size = Vector3(0.13, 0.36, 0.18)
+        mag.mesh = mag_box
+        mag.position = Vector3(0, -0.20, 0.02)
+        mag.rotation_degrees = Vector3(-12, 0, 0)
+        mag.material_override = mat
+        parent.add_child(mag)
+    else:
+        var scope := MeshInstance3D.new()
+        var scope_box := BoxMesh.new()
+        scope_box.size = Vector3(0.10, 0.13, 0.42)
+        scope.mesh = scope_box
+        scope.position = Vector3(0, 0.13, -0.10)
+        scope.material_override = mat
+        parent.add_child(scope)
+
 func _make_view_arms(parent: Node3D) -> void:
+    var skin := StandardMaterial3D.new()
+    skin.albedo_color = Color("b57b55")
+    skin.roughness = 0.78
     for side in [-1.0, 1.0]:
         var arm := MeshInstance3D.new()
         var box := BoxMesh.new()
-        box.size = Vector3(0.14, 0.14, 0.48)
+        box.size = Vector3(0.14, 0.14, 0.50)
         arm.mesh = box
         arm.position = Vector3(0.18 * side, -0.16, -0.34)
         arm.rotation_degrees = Vector3(-18, 0, 8 * side)
-        var mat := StandardMaterial3D.new()
-        mat.albedo_color = Color("4d5660")
-        mat.roughness = 0.8
-        arm.material_override = mat
+        arm.material_override = skin
         parent.add_child(arm)
 
 func _refresh_weapon() -> void:
     if not is_local or view_rifle == null:
         return
-    for child in view_rifle.get_children(): child.queue_free()
-    _make_weapon(view_rifle, true)
+    for child in view_rifle.get_children():
+        child.queue_free()
+    _make_weapon(view_rifle)
     _make_view_arms(view_rifle)
+    _set_aiming(aiming)
 
 func _set_aiming(value: bool) -> void:
     aiming = value and not reloading
@@ -107,52 +134,66 @@ func _set_aiming(value: bool) -> void:
         camera.fov = NORMAL_FOV
         view_rifle.position = Vector3(0.38, -0.28, -0.78)
 
-func _unhandled_input(event: InputEvent) -> void:
-    if not is_local: return
-    if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+func _input(event: InputEvent) -> void:
+    if not is_local:
+        return
+    if event is InputEventMouseButton:
+        if event.button_index == MOUSE_BUTTON_LEFT:
+            if Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
+                Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+                get_viewport().set_input_as_handled()
+                return
+            trigger_held = event.pressed
+            if event.pressed and weapon_mode == 1:
+                _shoot()
+        elif event.button_index == MOUSE_BUTTON_RIGHT:
+            _set_aiming(event.pressed)
+    elif event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
         yaw -= event.relative.x * 0.0025
         pitch = clamp(pitch - event.relative.y * 0.0025, -1.4, 1.4)
         rotation.y = yaw
         camera.rotation.x = pitch
-    if event is InputEventMouseButton:
-        if event.button_index == MOUSE_BUTTON_RIGHT: _set_aiming(event.pressed)
-        elif event.button_index == MOUSE_BUTTON_LEFT:
-            trigger_held = event.pressed
-            if event.pressed and weapon_mode == 1: _shoot()
-    if event is InputEventKey and event.pressed and not event.echo:
+    elif event is InputEventKey and event.pressed and not event.echo:
         match event.physical_keycode:
-            KEY_G: if world and world.has_method("throw_smoke"): world.throw_smoke()
-            KEY_H: if world and world.has_method("place_mine"): world.place_mine()
-            KEY_R: _start_reload()
-            KEY_1: _switch_weapon(0)
-            KEY_2: _switch_weapon(1)
-            KEY_SPACE: if is_on_floor(): velocity.y = 7.0
-            KEY_ESCAPE: Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+            KEY_ESCAPE:
+                Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+            KEY_G:
+                if world and world.has_method("throw_smoke"): world.throw_smoke()
+            KEY_H:
+                if world and world.has_method("place_mine"): world.place_mine()
+            KEY_R:
+                _start_reload()
+            KEY_1:
+                _switch_weapon(0)
+            KEY_2:
+                _switch_weapon(1)
 
 func _physics_process(delta: float) -> void:
-    if not is_local: return
+    if not is_local:
+        return
+    if Input.mouse_mode != Input.MOUSE_MODE_CAPTURED and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+        Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
     fire_cooldown = maxf(0.0, fire_cooldown - delta)
     if reloading:
         reload_timer -= delta
         if reload_timer <= 0.0: _finish_reload()
-    elif weapon_mode == 0 and trigger_held: _shoot()
+    elif weapon_mode == 0 and trigger_held:
+        _shoot()
+
     var input_vec := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
     var dir := (transform.basis * Vector3(input_vec.x, 0, input_vec.y)).normalized()
     var speed := SPEED * (0.82 if aiming else 1.0)
-    velocity.x = move_toward(velocity.x, dir.x * speed, 25.0 * delta)
-    velocity.z = move_toward(velocity.z, dir.z * speed, 25.0 * delta)
-    # Temporary map mode: no physical map collision. Keep the player glued to the play surface.
-    velocity.y = 0.0
+    global_position.x += dir.x * speed * delta
+    global_position.z += dir.z * speed * delta
     global_position.y = SURFACE_Y
-    move_and_slide()
-    global_position.y = SURFACE_Y
-    if view_rifle and not reloading and not aiming:
-        if input_vec.length() > 0.1:
-            bob_time += delta * 9.0
-            view_rifle.position.y = -0.28 + sin(bob_time) * 0.018
-            view_rifle.position.x = 0.38 + cos(bob_time * 0.5) * 0.012
+
+    if view_rifle and not reloading and not aiming and input_vec.length() > 0.1:
+        bob_time += delta * 9.0
+        view_rifle.position.y = -0.28 + sin(bob_time) * 0.018
+        view_rifle.position.x = 0.38 + cos(bob_time * 0.5) * 0.012
     recoil = move_toward(recoil, 0.0, delta * 10.0)
-    if camera: camera.rotation.x = pitch - recoil
+    if camera:
+        camera.rotation.x = pitch - recoil
 
 func _shoot() -> void:
     if reloading or ammo <= 0 or fire_cooldown > 0.0:
