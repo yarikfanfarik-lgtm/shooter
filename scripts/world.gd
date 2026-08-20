@@ -25,6 +25,14 @@ const WEAPONS := {
 }
 
 func start_match() -> void:
+    # Hide the main menu before creating the 3D match.
+    # Without this, the menu stayed above the camera and made PLAY VS BOTS
+    # look like it did nothing.
+    var main_root := get_parent()
+    if main_root:
+        var main_menu = main_root.get("menu")
+        if main_menu is Control:
+            main_menu.visible = false
     _build_map(map_name)
     _spawn_player(1, true)
     if with_bots:
@@ -86,7 +94,7 @@ func _industrial_map() -> void:
 
 func _building(pos: Vector3, size: Vector3, color: Color) -> void:
     _block(pos, size, color)
-    var roof := _block(pos + Vector3(0,size.y/2.0+0.25,0), Vector3(size.x+0.4,0.5,size.z+0.4), color.darkened(0.15))
+    _block(pos + Vector3(0,size.y/2.0+0.25,0), Vector3(size.x+0.4,0.5,size.z+0.4), color.darkened(0.15))
     for sx in [-1,1]:
         for sz in [-1,1]:
             _block(pos + Vector3(sx*(size.x/2.0-1),0,sz*(size.z/2.0+0.1)), Vector3(1,2,1), Color("30353b"))
